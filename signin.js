@@ -52360,7 +52360,9 @@
           var formUrl;
           var signFileUrl;
           var chimpRegex = /list-manage[1-9]?.com/i;
-          
+          var disconnected = _.debounce(function() {
+            alert("Oops! This page has improperly configured forms. Please contact your website administrator to fix this issue.");
+          }, 100);
           api.ready = api.design = api.preview = function() {
             init2();
             if (!inApp && !listening) {
@@ -52427,7 +52429,7 @@
               })();
               return;
             }
-           
+            disconnected();
           }
           function addListeners() {
             listening = true;
@@ -52438,7 +52440,32 @@
                 data.handler(data);
               }
             });
-           
+            const CHECKBOX_CLASS_NAME = ".w-checkbox-input";
+            const RADIO_INPUT_CLASS_NAME = ".w-radio-input";
+            const CHECKED_CLASS = "w--redirected-checked";
+            const FOCUSED_CLASS = "w--redirected-focus";
+            const FOCUSED_VISIBLE_CLASS = "w--redirected-focus-visible";
+            const focusVisibleSelectors = ":focus-visible, [data-wf-focus-visible]";
+            const CUSTOM_CONTROLS = [["checkbox", CHECKBOX_CLASS_NAME], ["radio", RADIO_INPUT_CLASS_NAME]];
+            $doc.on("change", namespace + ` form input[type="checkbox"]:not(` + CHECKBOX_CLASS_NAME + ")", (evt) => {
+              $2(evt.target).siblings(CHECKBOX_CLASS_NAME).toggleClass(CHECKED_CLASS);
+            });
+            $doc.on("change", namespace + ` form input[type="radio"]`, (evt) => {
+              $2(`input[name="${evt.target.name}"]:not(${CHECKBOX_CLASS_NAME})`).map((i, el) => $2(el).siblings(RADIO_INPUT_CLASS_NAME).removeClass(CHECKED_CLASS));
+              const $target = $2(evt.target);
+              if (!$target.hasClass("w-radio-input")) {
+                $target.siblings(RADIO_INPUT_CLASS_NAME).addClass(CHECKED_CLASS);
+              }
+            });
+            CUSTOM_CONTROLS.forEach(([controlType, customControlClassName]) => {
+              $doc.on("focus", namespace + ` form input[type="${controlType}"]:not(` + customControlClassName + ")", (evt) => {
+                $2(evt.target).siblings(customControlClassName).addClass(FOCUSED_CLASS);
+                $2(evt.target).filter(focusVisibleSelectors).siblings(customControlClassName).addClass(FOCUSED_VISIBLE_CLASS);
+              });
+              $doc.on("blur", namespace + ` form input[type="${controlType}"]:not(` + customControlClassName + ")", (evt) => {
+                $2(evt.target).siblings(customControlClassName).removeClass(`${FOCUSED_CLASS} ${FOCUSED_VISIBLE_CLASS}`);
+              });
+            });
           }
           function reset(data) {
             var btn = data.btn = data.form.find(':input[type="submit"]');
